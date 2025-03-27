@@ -1,4 +1,4 @@
-const express = require('express')
+const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require("cors");
 const swaggerUi = require('swagger-ui-express');
@@ -6,35 +6,54 @@ const swaggerSpec = require('./swagger');
 const path = require("path");
 
 const app = express();
-const corsOptions = {
-  origin: '*',
-  credentials: true,
-  methods: ['GET', 'POST'], 
-};
-app.use(cors(corsOptions));
 
+const corsOptions = {
+   origin: '*',
+   credentials: true,
+   methods: ['GET', 'POST'],
+};
+
+app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+// Serve static files with better configuration
+app.use('/assets', express.static(path.join(__dirname, 'assets'), {
+    setHeaders: (res, filePath) => {
+        if (path.extname(filePath).toLowerCase() === '.jpg' || 
+            path.extname(filePath).toLowerCase() === '.png') {
+            res.set('Cache-Control', 'public, max-age=86400'); // 1 day cache for images
+        }
+    }
+}));
 
-const dotenv  = require('dotenv')
+const dotenv = require('dotenv');
 dotenv.config({path:'./config.env'});
 
 require('./db/conn');
 
-app.use(require('./routers/auth'));
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
+
+app.use(require('./routers/auth')); 
 app.use(require('./routers/courses-sync'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('GET request to the homepage')
+   res.send('IbexEdu API is running');
 });
 
-app.listen(PORT, ()=>{
-    console.log("Server is running on port no.", PORT);
-})
+// Graceful shutdown
+process.on('SIGINT', () => {
+    console.log('Server is shutting down...');
+    process.exit(0);
+});
 
-
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});

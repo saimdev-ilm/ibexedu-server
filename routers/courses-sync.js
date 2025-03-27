@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const fetch = require("node-fetch").default;
+const fetch = require("node-fetch");
 const dotenv = require("dotenv");
 const path = require("path");
 const fs = require("fs");
