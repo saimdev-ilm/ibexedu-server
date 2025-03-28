@@ -8,21 +8,26 @@ const path = require("path");
 const app = express();
 
 const corsOptions = {
-   origin: '*',
+   origin: [
+    'http://localhost:5173',
+    'http://192.168.18.55:5173', 
+    'https://ibexvision-dev.vercel.app',
+    'https://fffb-154-192-137-16.ngrok-free.app'
+   ],
    credentials: true,
-   methods: ['GET', 'POST'],
+   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'ngrok-skip-browser-warning']
 };
 
 app.use(cors(corsOptions));
 app.use(cookieParser());
 app.use(express.json());
 
-// Serve static files with better configuration
 app.use('/assets', express.static(path.join(__dirname, 'assets'), {
     setHeaders: (res, filePath) => {
         if (path.extname(filePath).toLowerCase() === '.jpg' || 
             path.extname(filePath).toLowerCase() === '.png') {
-            res.set('Cache-Control', 'public, max-age=86400'); // 1 day cache for images
+            res.set('Cache-Control', 'public, max-age=86400');
         }
     }
 }));
@@ -32,7 +37,6 @@ dotenv.config({path:'./config.env'});
 
 require('./db/conn');
 
-// Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).send('Something broke!');
@@ -48,7 +52,6 @@ app.get('/', (req, res) => {
    res.send('IbexEdu API is running');
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
     console.log('Server is shutting down...');
     process.exit(0);

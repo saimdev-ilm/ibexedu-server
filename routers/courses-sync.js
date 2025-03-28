@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const fetch = require("node-fetch");
+const fetch = require("node-fetch").default;
 const dotenv = require("dotenv");
 const path = require("path");
 const fs = require("fs");
@@ -27,8 +27,6 @@ async function downloadImage(imageUrl, courseId) {
   try {
     const imagesDir = path.join(__dirname, '..', 'assets', 'courses_images');
     await ensureDirectoryExists(imagesDir);
-
-    // Remove query parameters from the URL
     const cleanImageUrl = imageUrl.split('?')[0];
 
     const response = await fetch(imageUrl);

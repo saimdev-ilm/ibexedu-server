@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const fetch = require("node-fetch");
+const fetch = require("node-fetch").default;
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config.env" });
 const { db } = require("../db/conn");
@@ -410,7 +410,6 @@ router.get("/api/ibexedu/courses", async (req, res) => {
   } = req.query;
 
   try {
-    // Validate input parameters
     const parsedLimit = parseInt(limit, 10);
     const parsedStart = parseInt(start, 10);
 
@@ -420,7 +419,6 @@ router.get("/api/ibexedu/courses", async (req, res) => {
       });
     }
 
-    // Count total courses for the query
     const countQuery = "SELECT COUNT(*) as total FROM courses";
     const totalResult = await new Promise((resolve, reject) => {
       db.get(countQuery, (err, row) => {
@@ -431,11 +429,9 @@ router.get("/api/ibexedu/courses", async (req, res) => {
 
     const totalCourses = totalResult.total;
 
-    // Adjust start and limit to prevent out-of-bounds requests
     const adjustedStart = Math.min(Math.max(parsedStart, 0), totalCourses);
     const adjustedLimit = Math.min(parsedLimit, totalCourses - adjustedStart);
 
-    // If adjusted limit is 0, return an empty array
     if (adjustedLimit <= 0) {
       return res.json({
         total_courses: totalCourses,
@@ -443,7 +439,6 @@ router.get("/api/ibexedu/courses", async (req, res) => {
       });
     }
 
-    // Construct base query to select all columns
     let query = `
       SELECT 
         id, 
@@ -472,7 +467,6 @@ router.get("/api/ibexedu/courses", async (req, res) => {
     `;
     const params = [adjustedLimit, adjustedStart];
 
-    // Execute main query
     const courses = await new Promise((resolve, reject) => {
       db.all(query, params, (err, rows) => {
         if (err) reject(err);
@@ -480,9 +474,7 @@ router.get("/api/ibexedu/courses", async (req, res) => {
       });
     });
 
-    // Process the courses to parse JSON fields and create full image URLs
     const processedCourses = courses.map(course => {
-      // Parse JSON fields
       const parsedCourse = {
         ...course,
         languages: JSON.parse(course.languages || '[]'),
@@ -495,15 +487,12 @@ router.get("/api/ibexedu/courses", async (req, res) => {
         complete_in_order: !!course.complete_in_order
       };
 
-      // Create full image URL if image_path exists
       if (course.image_path) {
-        // Normalize the path and remove any leading 'assets/' or backslashes
         const normalizedPath = course.image_path
-          .replace(/^assets[/\\]/, '')  // Remove leading 'assets/' or 'assets\'
-          .replace(/^[/\\]/, '')        // Remove leading slash or backslash
-          .replace(/\\/g, '/');         // Replace backslashes with forward slashes
+          .replace(/^assets[/\\]/, '')
+          .replace(/^[/\\]/, '')
+          .replace(/\\/g, '/');
 
-        // Create full image URL
         parsedCourse.full_image_url = `${req.protocol}://${req.get('host')}/assets/${normalizedPath}`;
       }
 
