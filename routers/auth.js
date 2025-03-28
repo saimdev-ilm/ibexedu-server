@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const fetch = require("node-fetch").default;
+// const fetch = require("node-fetch").default;
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config.env" });
 const { db } = require("../db/conn");
