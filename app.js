@@ -56,7 +56,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 const PORT = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
-  res.send("IbexEdu API is running");
+  res.send("IbexEdu API is running... testing");
 });
 
 process.on("SIGINT", () => {
