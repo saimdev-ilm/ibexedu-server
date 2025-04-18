@@ -92,7 +92,7 @@ router.post("/api/contact", async (req, res) => {
       
       const mailOptions = {
         from: process.env.GMAIL_USER,
-        to: "saimabbasi486@gmail.com",
+        to: "adnan@ilmach.com",
         replyTo: email,
         subject: `New Contact Form Submission from ${name} at ${company}`,
         text: `
