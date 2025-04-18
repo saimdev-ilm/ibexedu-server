@@ -3,19 +3,20 @@ const router = express.Router();
 const nodemailer = require("nodemailer");
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config.env" });
+const { db } = require("../db/conn");
 
 /**
  * @swagger
  * tags:
  *   - name: Contact
- *     description: Operations related to contact forms and email
+ *     description: Operations related to contact form submissions
  *
- * /api/contact/send-email:
+ * /api/contact:
  *   post:
  *     tags:
  *       - Contact
- *     summary: Send Contact Form Email
- *     description: Sends form data as an email to info@ibexvision.ai
+ *     summary: Submit Contact Form
+ *     description: Submit contact form data and send an email notification
  *     requestBody:
  *       required: true
  *       content:
@@ -25,96 +26,115 @@ dotenv.config({ path: "./config.env" });
  *             properties:
  *               name:
  *                 type: string
- *                 description: Name of the person submitting the form
+ *                 description: Full name of the person submitting the form
  *               email:
  *                 type: string
- *                 description: Email of the person submitting the form
- *               subject:
+ *                 description: Email address of the person
+ *               phone:
  *                 type: string
- *                 description: Subject of the email
+ *                 description: Phone number of the person
+ *               company:
+ *                 type: string
+ *                 description: Company or organization name
  *               message:
  *                 type: string
- *                 description: Message content
+ *                 description: Optional message content
  *             required:
  *               - name
  *               - email
- *               - message
+ *               - phone
+ *               - company
  *     responses:
- *       200:
- *         description: Email sent successfully
+ *       201:
+ *         description: Contact form submitted successfully
  *       400:
  *         description: Invalid input parameters
  *       500:
- *         description: Error sending email
+ *         description: Server error
  */
-router.post("/api/contact/send-email", async (req, res) => {
+router.post("/api/contact", async (req, res) => {
   try {
-    // Validate required fields
-    const { name, email, subject, message, ...otherFormData } = req.body;
+    const { name, email, phone, company, message = "" } = req.body;
     
-    if (!name || !email || !message) {
+    // Validate required fields
+    if (!name || !email || !phone || !company) {
       return res.status(400).json({
         error: "Missing required fields",
-        required: ["name", "email", "message"]
+        required: ["name", "email", "phone", "company"]
+      });
+    }
+    
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        error: "Invalid email format"
       });
     }
 
-    // Create email transporter using Gmail
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.GMAIL_USER, // Your Gmail email address
-        pass: process.env.GMAIL_APP_PASSWORD // Your Gmail app password
+    // Phone number validation regex (basic example, can be improved)
+    const phoneRegex = /^\+?[0-9\s\-()]+$/; // Allows +, spaces, dashes, and parentheses
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        error: "Invalid phone number format"
+      });
+    }
+    
+    // Send email notification if GMAIL_USER is configured
+    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.GMAIL_USER,
+          pass: process.env.GMAIL_APP_PASSWORD
+        }
+      });
+      
+      const mailOptions = {
+        from: process.env.GMAIL_USER,
+        to: "saimabbasi486@gmail.com",
+        replyTo: email,
+        subject: `New Contact Form Submission from ${name} at ${company}`,
+        text: `
+          Name: ${name}
+          Email: ${email}
+          Phone: ${phone}
+          Company: ${company}
+          Message: ${message || "No message provided"}
+        `,
+        html: `
+          <h2>New Contact Form Submission</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${phone}</p>
+          <p><strong>Company:</strong> ${company}</p>
+          <p><strong>Message:</strong> ${message || "No message provided"}</p>
+        `
+      };
+      
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log("Email notification sent");
+      } catch (emailError) {
+        console.error("Error sending email notification:", emailError);
+        // Continue with the response even if email fails
       }
-    });
-
-    // Prepare email content (including all form fields)
-    const formDataString = Object.entries({
-      name,
-      email,
-      subject: subject || "Contact Form Submission",
-      message,
-      ...otherFormData
-    })
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n\n');
-
-    // Define email options
-    const mailOptions = {
-      from: process.env.GMAIL_USER,
-      to: "saimabbasi486@gmail.com",
-      replyTo: email,
-      subject: subject || `New Contact Form Submission from ${name}`,
-      text: formDataString,
-      html: `
-        <h2>New Contact Form Submission</h2>
-        <hr>
-        ${Object.entries({
-          name,
-          email,
-          subject: subject || "Contact Form Submission",
-          message,
-          ...otherFormData
-        })
-          .map(([key, value]) => `<p><strong>${key}:</strong> ${typeof value === 'string' ? value.replace(/\n/g, '<br>') : value}</p>`)
-          .join('')}
-      `
-    };
-
-    // Send email
-    await transporter.sendMail(mailOptions);
-
-    res.status(200).json({
+    }
+    
+    res.status(201).json({
       success: true,
-      message: "Email sent successfully"
+      message: "Contact form submitted successfully"
     });
+    
   } catch (error) {
-    console.error("Error sending email:", error);
+    console.error("Error processing contact submission:", error);
     res.status(500).json({
-      error: "Failed to send email",
+      error: "Failed to process contact submission",
       details: error.message
     });
   }
 });
+
+
 
 module.exports = router;
