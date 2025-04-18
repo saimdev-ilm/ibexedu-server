@@ -51,6 +51,7 @@ app.use((err, req, res, next) => {
 
 app.use(require("./routers/auth"));
 app.use(require("./routers/courses-sync"));
+app.use(require("./routers/email"));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const PORT = process.env.PORT || 3000;

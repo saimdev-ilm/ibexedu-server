@@ -19,7 +19,7 @@
     "jsonwebtoken": "^9.0.0",
     "mongoose": "^7.0.4",
     "node-fetch": "^3.3.2",
-    "nodemailer": "^6.9.2",
+    "nodemailer": "^6.10.1",
     "pm2": "^6.0.5",
     "sqlite3": "^5.1.7",
     "swagger-jsdoc": "^6.2.8",
