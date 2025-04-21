@@ -552,7 +552,7 @@ router.post("/api/contact", async (req, res) => {
         toRecipients: [
           {
             emailAddress: {
-              address: "saim@ilmach.com",
+              address: "info@ibexvision.ai",
             },
           },
         ],
