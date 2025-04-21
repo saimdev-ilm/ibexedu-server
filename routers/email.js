@@ -1053,12 +1053,12 @@ router.post("/api/job-application", upload.single('resume'), async (req, res) =>
 
     // Validate position
     const validPositions = [
-      'Software Engineer',
-      'UX Designer',
-      'Product Manager',
-      'QA Engineer',
-      'DevOps Specialist',
-      'Project Manager'
+      'software-engineer',
+      'ux-designer',
+      'product-manager',
+      'qa-engineer',
+      'devops-specialist',
+      'project-manager'
     ];
     
     if (!validPositions.includes(position)) {
@@ -1571,12 +1571,12 @@ router.post("/api/help-center", async (req, res) => {
  */
 router.post("/api/request-demo", async (req, res) => {
   try {
-    const { fullName, email, phone, company, message = "" } = req.body;
+    const { name, email, phone, company, message = "" } = req.body;
     
     // Validate required fields
     const requiredValidation = validateRequired(
-      { fullName, email, phone, company },
-      ["fullName", "email", "phone", "company"]
+      { name, email, phone, company },
+      ["name", "email", "phone", "company"]
     );
     
     if (!requiredValidation.valid) {
@@ -1601,7 +1601,7 @@ router.post("/api/request-demo", async (req, res) => {
     }
 
     // Prepare form data
-    const formData = { fullName, email, phone, company, message };
+    const formData = { name, email, phone, company, message };
     
     // Send emails
     await sendEmails('demo', formData, email);
