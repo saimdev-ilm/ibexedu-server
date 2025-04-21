@@ -16,9 +16,14 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    // Get first name and position from request body if available
+    const firstName = req.body.firstName || 'applicant';
+    const position = req.body.position || 'position';
     const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + "-" + uniqueSuffix + ext);
+    
+    // Create a clean filename with firstName_position.extension
+    const cleanFileName = `${firstName.replace(/[^a-z0-9]/gi, '_')}_${position.replace(/[^a-z0-9]/gi, '_')}${ext}`.toLowerCase();
+    cb(null, cleanFileName);
   }
 });
 
@@ -38,6 +43,134 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: fileFilter
 });
+
+const getFileContentType = (filename) => {
+  const ext = path.extname(filename).toLowerCase();
+  
+  switch(ext) {
+    case '.pdf':
+      return 'application/pdf';
+    case '.doc':
+      return 'application/msword';
+    case '.docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    default:
+      return 'application/octet-stream';
+  }
+};
+
+const createJobApplicationAdminEmailTemplate = (formData) => {
+  // This is a specialized version that shows better resume information
+  const resumeInfo = formData.resumePath 
+    ? `<div class="detail-row">
+        <div class="detail-label">Resume:</div>
+        <div class="detail-value">
+          <strong>${formData.resumeOriginalName}</strong> (attached to this email)
+        </div>
+      </div>`
+    : `<div class="detail-row">
+        <div class="detail-label">Resume:</div>
+        <div class="detail-value"><em>No resume provided</em></div>
+      </div>`;
+
+  return `
+    <div class="contact-details">
+      <div class="section-title">Job Application Information</div>
+      <div class="detail-row">
+        <div class="detail-label">Name:</div>
+        <div class="detail-value">${formData.firstName} ${formData.lastName}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Email:</div>
+        <div class="detail-value">${formData.email}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Position:</div>
+        <div class="detail-value">${formData.position}</div>
+      </div>
+      ${resumeInfo}
+    </div>
+    
+    <div class="message-box">
+      <div class="section-title">Cover Letter</div>
+      <div class="message-content">
+        ${formData.coverLetter ? formData.coverLetter.replace(/\n/g, '<br>') : '<em>No cover letter provided</em>'}
+      </div>
+    </div>
+  `;
+};
+
+const sendJobApplicationEmails = async (formData, userEmail) => {
+  try {
+    const recipientEmail = 'jobs@ibexvision.ai'; // Job applications go to the jobs email
+    const adminHtmlContent = createAdminEmailTemplate('job', formData);
+    const userHtmlContent = createUserEmailTemplate('job', formData);
+    
+    // Create attachment if resume exists
+    let attachments = [];
+    if (formData.resumePath) {
+      try {
+        // Read the file as base64
+        const fileContent = fs.readFileSync(formData.resumePath);
+        const base64Content = Buffer.from(fileContent).toString('base64');
+        
+        // Create the attachment
+        attachments.push({
+          '@odata.type': '#microsoft.graph.fileAttachment',
+          name: formData.resumeFileName,
+          contentType: getFileContentType(formData.resumeFileName),
+          contentBytes: base64Content
+        });
+      } catch (fileError) {
+        console.error('Error attaching resume file:', fileError);
+        // Continue even if file attachment fails
+      }
+    }
+
+    // Send the admin notification email with attachment
+    await client.api(`/users/${senderEmail}/sendMail`).post({
+      message: {
+        subject: `New Job Application - ${formData.position} - ${formData.firstName} ${formData.lastName}`,
+        body: {
+          contentType: "HTML",
+          content: adminHtmlContent,
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: recipientEmail,
+            },
+          },
+        ],
+        attachments: attachments
+      },
+    });
+
+    // Send confirmation email to the applicant (without resume attachment)
+    await client.api(`/users/${senderEmail}/sendMail`).post({
+      message: {
+        subject: `Job Application Received - ibexVision`,
+        body: {
+          contentType: "HTML",
+          content: userHtmlContent,
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: userEmail,
+            },
+          },
+        ],
+      },
+    });
+
+    console.log(`Job application emails sent successfully. Admin email with resume sent to ${recipientEmail} and confirmation email sent to ${userEmail}`);
+  } catch (error) {
+    console.error('Error sending job application emails:', error);
+    throw error;
+  }
+};
+
 
 const tenantId = process.env.TENANT_ID;
 const clientId = process.env.CLIENT_ID;
@@ -195,34 +328,7 @@ const createAdminEmailTemplate = (formType, formData) => {
       break;
 
     case 'job':
-      formSpecificSection = `
-        <div class="contact-details">
-          <div class="section-title">Job Application Information</div>
-          <div class="detail-row">
-            <div class="detail-label">Name:</div>
-            <div class="detail-value">${formData.firstName} ${formData.lastName}</div>
-          </div>
-          <div class="detail-row">
-            <div class="detail-label">Email:</div>
-            <div class="detail-value">${formData.email}</div>
-          </div>
-          <div class="detail-row">
-            <div class="detail-label">Position:</div>
-            <div class="detail-value">${formData.position}</div>
-          </div>
-          <div class="detail-row">
-            <div class="detail-label">Resume:</div>
-            <div class="detail-value">${formData.resumePath ? 'Attached' : 'Not provided'}</div>
-          </div>
-        </div>
-        
-        <div class="message-box">
-          <div class="section-title">Cover Letter</div>
-          <div class="message-content">
-            ${formData.coverLetter ? formData.coverLetter.replace(/\n/g, '<br>') : '<em>No cover letter provided</em>'}
-          </div>
-        </div>
-      `;
+      formSpecificSection = createJobApplicationAdminEmailTemplate(formData);
       break;
 
     case 'ibexcortex':
@@ -962,18 +1068,20 @@ router.post("/api/job-application", upload.single('resume'), async (req, res) =>
       });
     }
 
-    // Prepare form data with resume path if uploaded
+    // Prepare form data with resume information
     const formData = { 
       firstName, 
       lastName, 
       email, 
       position, 
       coverLetter,
-      resumePath: req.file ? req.file.path : null
+      resumePath: req.file ? req.file.path : null,
+      resumeFileName: req.file ? req.file.filename : null,
+      resumeOriginalName: req.file ? req.file.originalname : null
     };
     
-    // Send emails
-    await sendEmails('job', formData, email);
+    // Instead of using the regular sendEmails function, create a specialized version for job applications
+    await sendJobApplicationEmails(formData, email);
 
     res.status(201).json({
       success: true,
