@@ -854,7 +854,7 @@ const createUserEmailTemplate = (formType, formData) => {
         <div class="contact-info">
           <p>If you have any urgent questions, please don't hesitate to contact us directly:</p>
           <p><strong>Email:</strong> customersupport@ibexvision.com</p>
-          <p><strong>Phone:</strong> +1 (555) 123-4567</p>
+          <p><strong>Phone:</strong> +1248-457-4505</p>
           
           <div class="social-links">
             <a href="#" class="social-icon">📘</a>
