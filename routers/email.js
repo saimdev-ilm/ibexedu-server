@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
     const firstName = req.body.firstName || 'applicant';
     const position = req.body.position || 'position';
     const ext = path.extname(file.originalname);
-    
+
     // Create a clean filename with firstName_position.extension
     const cleanFileName = `${firstName.replace(/[^a-z0-9]/gi, '_')}_${position.replace(/[^a-z0-9]/gi, '_')}${ext}`.toLowerCase();
     cb(null, cleanFileName);
@@ -30,7 +30,7 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   const allowedTypes = [".pdf", ".doc", ".docx"];
   const ext = path.extname(file.originalname).toLowerCase();
-  
+
   if (allowedTypes.includes(ext)) {
     cb(null, true);
   } else {
@@ -38,7 +38,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: fileFilter
@@ -46,7 +46,7 @@ const upload = multer({
 
 const getFileContentType = (filename) => {
   const ext = path.extname(filename).toLowerCase();
-  
+
   switch(ext) {
     case '.pdf':
       return 'application/pdf';
@@ -61,7 +61,7 @@ const getFileContentType = (filename) => {
 
 const createJobApplicationAdminEmailTemplate = (formData) => {
   // This is a specialized version that shows better resume information
-  const resumeInfo = formData.resumePath 
+  const resumeInfo = formData.resumePath
     ? `<div class="detail-row">
         <div class="detail-label">Resume:</div>
         <div class="detail-value">
@@ -105,7 +105,7 @@ const sendJobApplicationEmails = async (formData, userEmail) => {
     const recipientEmail = 'jobs@ibexvision.ai'; // Job applications go to the jobs email
     const adminHtmlContent = createAdminEmailTemplate('job', formData);
     const userHtmlContent = createUserEmailTemplate('job', formData);
-    
+
     // Create attachment if resume exists
     let attachments = [];
     if (formData.resumePath) {
@@ -113,7 +113,7 @@ const sendJobApplicationEmails = async (formData, userEmail) => {
         // Read the file as base64
         const fileContent = fs.readFileSync(formData.resumePath);
         const base64Content = Buffer.from(fileContent).toString('base64');
-        
+
         // Create the attachment
         attachments.push({
           '@odata.type': '#microsoft.graph.fileAttachment',
@@ -889,7 +889,7 @@ const sendEmails = async (formType, formData, userEmail) => {
   const recipientEmail = getRecipientEmail(formType);
   const adminHtmlContent = createAdminEmailTemplate(formType, formData);
   const userHtmlContent = createUserEmailTemplate(formType, formData);
-  
+
   // Map form types to admin email subjects
   const subjectMap = {
     'contact': 'New Contact Form Submission - ibexVision',
@@ -902,7 +902,7 @@ const sendEmails = async (formType, formData, userEmail) => {
   };
 
   const adminSubject = subjectMap[formType] || 'New Form Submission - ibexVision';
-  
+
   // Map form types to user email subjects
   const userSubjectMap = {
     'contact': 'Thank You for Contacting ibexVision',
@@ -1030,13 +1030,13 @@ const validateRequired = (data, fields) => {
 router.post("/api/job-application", upload.single('resume'), async (req, res) => {
   try {
     const { firstName, lastName, email, position, coverLetter = "" } = req.body;
-    
+
     // Validate required fields
     const requiredValidation = validateRequired(
       { firstName, lastName, email, position },
       ["firstName", "lastName", "email", "position"]
     );
-    
+
     if (!requiredValidation.valid) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -1060,7 +1060,7 @@ router.post("/api/job-application", upload.single('resume'), async (req, res) =>
       'devops-specialist',
       'project-manager'
     ];
-    
+
     if (!validPositions.includes(position)) {
       return res.status(400).json({
         error: "Invalid position selected",
@@ -1069,17 +1069,17 @@ router.post("/api/job-application", upload.single('resume'), async (req, res) =>
     }
 
     // Prepare form data with resume information
-    const formData = { 
-      firstName, 
-      lastName, 
-      email, 
-      position, 
+    const formData = {
+      firstName,
+      lastName,
+      email,
+      position,
       coverLetter,
       resumePath: req.file ? req.file.path : null,
       resumeFileName: req.file ? req.file.filename : null,
       resumeOriginalName: req.file ? req.file.originalname : null
     };
-    
+
     // Instead of using the regular sendEmails function, create a specialized version for job applications
     await sendJobApplicationEmails(formData, email);
 
@@ -1151,13 +1151,13 @@ router.post("/api/job-application", upload.single('resume'), async (req, res) =>
 router.post("/api/ibexcortex", async (req, res) => {
   try {
     const { fullName, company, jobTitle, email, phone, services, projectDescription = "" } = req.body;
-    
+
     // Validate required fields
     const requiredValidation = validateRequired(
       { fullName, company, jobTitle, email, services },
       ["fullName", "company", "jobTitle", "email", "services"]
     );
-    
+
     if (!requiredValidation.valid) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -1206,7 +1206,7 @@ router.post("/api/ibexcortex", async (req, res) => {
 
     // Prepare form data
     const formData = { fullName, company, jobTitle, email, phone, services, projectDescription };
-    
+
     // Send emails
     await sendEmails('ibexcortex', formData, email);
 
@@ -1269,13 +1269,13 @@ router.post("/api/ibexcortex", async (req, res) => {
 router.post("/api/course-enrollment", async (req, res) => {
   try {
     const { courseName, fullName, email, phone, message = "" } = req.body;
-    
+
     // Validate required fields
     const requiredValidation = validateRequired(
       { courseName, fullName, email, phone },
       ["courseName", "fullName", "email", "phone"]
     );
-    
+
     if (!requiredValidation.valid) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -1299,7 +1299,7 @@ router.post("/api/course-enrollment", async (req, res) => {
 
     // Prepare form data
     const formData = { courseName, fullName, email, phone, message };
-    
+
     // Send emails
     await sendEmails('course', formData, email);
 
@@ -1366,13 +1366,13 @@ router.post("/api/course-enrollment", async (req, res) => {
 router.post("/api/partnership", async (req, res) => {
   try {
     const { company, contactPerson, email, phone, partnershipType, message = "" } = req.body;
-    
+
     // Validate required fields
     const requiredValidation = validateRequired(
       { company, contactPerson, email, partnershipType },
       ["company", "contactPerson", "email", "partnershipType"]
     );
-    
+
     if (!requiredValidation.valid) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -1405,7 +1405,7 @@ router.post("/api/partnership", async (req, res) => {
 
     // Prepare form data
     const formData = { company, contactPerson, email, phone, partnershipType, message };
-    
+
     // Send emails
     await sendEmails('partnership', formData, email);
 
@@ -1470,13 +1470,13 @@ router.post("/api/partnership", async (req, res) => {
 router.post("/api/help-center", async (req, res) => {
   try {
     const { fullName, email, phone, subject, message } = req.body;
-    
+
     // Validate required fields
     const requiredValidation = validateRequired(
       { fullName, email, phone, subject, message },
       ["fullName", "email", "phone", "subject", "message"]
     );
-    
+
     if (!requiredValidation.valid) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -1509,7 +1509,7 @@ router.post("/api/help-center", async (req, res) => {
 
     // Prepare form data
     const formData = { fullName, email, phone, subject, message };
-    
+
     // Send emails
     await sendEmails('help', formData, email);
 
@@ -1572,13 +1572,13 @@ router.post("/api/help-center", async (req, res) => {
 router.post("/api/request-demo", async (req, res) => {
   try {
     const { name, email, phone, company, message = "" } = req.body;
-    
+
     // Validate required fields
     const requiredValidation = validateRequired(
       { name, email, phone, company },
       ["name", "email", "phone", "company"]
     );
-    
+
     if (!requiredValidation.valid) {
       return res.status(400).json({
         error: "Missing required fields",
@@ -1601,8 +1601,8 @@ router.post("/api/request-demo", async (req, res) => {
     }
 
     // Prepare form data
-    const formData = { name, email, phone, company, message };
-    
+    const formData = { fullName: name, email, phone, company, message };
+
     // Send emails
     await sendEmails('demo', formData, email);
 
